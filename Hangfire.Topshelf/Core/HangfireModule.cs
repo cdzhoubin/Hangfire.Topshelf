@@ -2,9 +2,11 @@
 using System.Reflection;
 using Autofac;
 using Autofac.Core;
+using Autofac.Core.Registration;
 using Hangfire.Topshelf.Jobs;
 using Hangfire.Samples.Framework;
 using Hangfire.Samples.Framework.Logging;
+using Autofac.Core.Resolving.Pipeline;
 
 namespace Hangfire.Topshelf.Core
 {
@@ -13,18 +15,49 @@ namespace Hangfire.Topshelf.Core
 	/// </summary>
 	public class HangfireModule : Autofac.Module
 	{
-		protected override void AttachToComponentRegistration(IComponentRegistry componentRegistry, IComponentRegistration registration)
+		protected override void AttachToComponentRegistration(IComponentRegistryBuilder componentRegistry, IComponentRegistration registration)
 		{
 			base.AttachToComponentRegistration(componentRegistry, registration);
 
 			// Handle constructor parameters.
-			registration.Preparing += OnComponentPreparing;
+			//registration.Preparing += OnComponentPreparing;
+            registration.PipelineBuilding += Registration_PipelineBuilding;
 
 			// Handle properties.
-			registration.Activated += (sender, e) => InjectLoggerProperties(e.Instance);
+			//registration.Activated += (sender, e) => InjectLoggerProperties(e.Instance);
 		}
 
-		private void InjectLoggerProperties(object instance)
+        private void Registration_PipelineBuilding(object sender, Autofac.Core.Resolving.Pipeline.IResolvePipelineBuilder pipeline)
+        {
+            pipeline.Use(PipelinePhase.Activation, MiddlewareInsertionMode.EndOfPhase, (c, next) =>
+            {
+                next(c);
+
+                // Do something with the component instance
+                //var instance = c.Instance;
+                InjectLoggerProperties(c.Instance);
+
+            });
+
+            pipeline.Use(PipelinePhase.ParameterSelection, MiddlewareInsertionMode.StartOfPhase, (c, next) =>
+            {
+                next(c);
+
+                // Do something with the component instance
+                //var instance = c.Instance;
+                InjectLoggerProperties(c.Instance);
+				c.Parameters.Union(new[]
+                {
+                    new ResolvedParameter(
+                        (p, i) => p.ParameterType == typeof(ILog),
+                        (p, i) => LogProvider.GetLogger(p.Member.DeclaringType)
+                    ),
+                });
+
+            });
+        }
+
+        private void InjectLoggerProperties(object instance)
 		{
 			var instanceType = instance.GetType();
 

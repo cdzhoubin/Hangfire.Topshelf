@@ -31,8 +31,9 @@ namespace Hangfire.Topshelf.Core
 			var queues = new[] { "default", "apis", "jobs" };
 
 #if DEBUG
-			app.UseStorage(new Hangfire.SqlServer.SqlServerStorage(HangfireSettings.Instance.HangfireSqlserverConnectionString))
-			   .UseMsmq(@".\private$\hangfire-{0}", queues)	
+            app.UseStorage(new Hangfire.MemoryStorage.MemoryStorage())
+            //app.UseStorage(new Hangfire.SqlServer.SqlServerStorage(HangfireSettings.Instance.HangfireSqlserverConnectionString))
+			 //  .UseMsmq(@".\private$\hangfire-{0}", queues)	
 			   .UseConsole();
 #else
 			app.UseStorage(new Hangfire.Redis.RedisStorage(HangfireSettings.Instance.HangfireRedisConnectionString))
